@@ -41,6 +41,14 @@
 					>
 						{{move.text}}
 					</span>
+					<v-btn
+					color="success"
+					large
+					@click="onClickStartSolve"
+				>
+					Start Solve
+				</v-btn>
+
 				</div>
 				<div class="timer">
 					<v-btn
@@ -257,22 +265,30 @@ export default {
 		};
 	},
 	computed: {
-		scrambleMoves() {
+		scrambleMoves()  {
 			if (this.scramble === null) {
 				return [];
 			}
 
-			assert(this.placeholderMoves.length >= this.scramble.moves.length);
-
+			//!!assert(this.placeholderMoves.length >= this.scramble.moves.length);
+			return this.placeholderMoves.map((move, index) => {
+				return {
+						text: getNotation(move),
+						grey: false,
+						};
+				});
+				
+				
 			const greyedMovesCount = this.placeholderMoves.length - this.scramble.moves.length;
 
 			return this.placeholderMoves.map((move, index) => {
 				if (index < greyedMovesCount) {
 					return {
 						text: getNotation(move),
-						grey: true,
+						grey: false,
 					};
 				}
+
 
 				const actualMove = this.scramble.moves[index - greyedMovesCount];
 
@@ -327,10 +343,10 @@ export default {
 		}
 	},
 	mounted() {
-		const scramble = sample(scrambles.sheets[0].scrambles);
-		this.scramble = MoveSequence.fromScramble(scramble, {mode: 'reduction'});
-		this.initialScramble = MoveSequence.fromScramble(scramble, {mode: 'reduction'});
-		this.placeholderMoves = this.scramble.moves.map((move) => ({...move}));
+		this.startSolveSequenceStr = "R U U' R'";
+		this.scramble = new MoveSequence([], {mode: 'addition'});
+		this.rawScramble = new MoveSequence([], {mode: 'raw'});
+		this.placeholderMoves = [];
 
 		this.isDialogOpen = !navigator.bluetooth && typeof BluetoothDevice === 'undefined';
 		this.platform = navigator.platform;
@@ -385,23 +401,23 @@ export default {
 			}
 
 			if (this.phase === 'scramble') {
-				this.scramble.unshift({
+				this.scramble.push({ 
 					face: move.face,
-					amount: -move.amount,
+					amount: move.amount,
 				});
-				if (this.scramble.length > this.placeholderMoves.length) {
-					this.placeholderMoves = this.scramble.moves.map((m) => ({...m}));
-				}
-				if (this.scramble.length === 0) {
-					this.phase = 'inspect';
-					this.time = 0;
-				}
+				this.rawScramble.push({ 
+					face: move.face,
+					amount: move.amount,
+				});				
+				this.placeholderMoves = this.scramble.moves.map((m) => ({...m}));
+				
+				this.checkStartSolveSequence();
 				return;
 			}
 
 			if (this.phase === 'inspect') {
 				this.startTime = new Date();
-				this.analyzer = new SolveAnalyzer({scramble: this.initialScramble.moves});
+				this.analyzer = new SolveAnalyzer({scramble: this.rawScramble.moves});
 				this.analyzerState = this.analyzer.state;
 				this.analyzer.on('statechange', (key, value) => {
 					this.$set(this.analyzerState, key, value);
@@ -426,6 +442,15 @@ export default {
 				}
 			}
 		},
+		checkStartSolveSequence() {
+			if (this.scramble.toString().endsWith(this.startSolveSequenceStr)) {
+				this.scramble.pop(4);//!!take length
+				this.rawScramble.pop(4); //!!
+				this.onClickStartSolve();
+			}
+			
+			return;
+		},
 		onTick() {
 			const now = new Date();
 			this.time = now.getTime() - this.startTime.getTime();
@@ -435,6 +460,12 @@ export default {
 			if (element) {
 				element.scrollIntoView({block: 'end', inline: 'nearest', behavior: 'smooth'});
 			}
+		},
+		onClickStartSolve() {
+			this.phase = 'inspect';
+			this.time = 0;
+			return;
+		
 		},
 		onClickReset() {
 			if (this.phase !== 'solve') {
@@ -457,11 +488,10 @@ export default {
 			this.phase = 'scramble';
 			this.isFirstSolve = false;
 
-			const scramble = scrambo.getRandomScramble().replace(/ +/g, ' ').trim();
-			this.scramble = MoveSequence.fromScramble(scramble, {mode: 'reduction'});
-			this.initialScramble = MoveSequence.fromScramble(scramble, {mode: 'reduction'});
-
-			this.placeholderMoves = this.scramble.moves.map((move) => ({...move}));
+			this.scramble = new MoveSequence([], {mode: 'addition'});
+			this.rawScramble = new MoveSequence([], {mode: 'raw'});
+			this.placeholderMoves = [];
+			
 			document.getElementById('stages').scrollTop = 0;
 		},
 		async onClickDelete() {

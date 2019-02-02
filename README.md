@@ -18,6 +18,9 @@ $ npm start
 
 # generate static project
 $ npm run generate
+
+# for windows compilation
+$ npm install -g windows-build-tools
 ```
 
 For detailed explanation on how things work, checkout the [Nuxt.js docs](https://github.com/nuxt/nuxt.js).
