@@ -14,7 +14,7 @@
 						Solve the cube before starting scramble.
 					</span>
 					<span v-if="phase === 'scramble'">
-						Follow the scramble. Keep in mind you should hold the cube white-top and green-front.
+						Scramble the cube. To start the solve perform <b>R U U' R'</b> while holding the cube white-top and green-front (or click the button).
 					</span>
 					<span v-if="phase === 'inspect'">
 						Now start solving when you're ready.
@@ -41,12 +41,13 @@
 					>
 						{{move.text}}
 					</span>
+					<br/>
 					<v-btn
 					color="success"
 					large
 					@click="onClickStartSolve"
 				>
-					Start Solve
+					Start Solve (R U U' R')
 				</v-btn>
 
 				</div>
@@ -270,7 +271,6 @@ export default {
 				return [];
 			}
 
-			//!!assert(this.placeholderMoves.length >= this.scramble.moves.length);
 			return this.placeholderMoves.map((move, index) => {
 				return {
 						text: getNotation(move),
@@ -344,7 +344,7 @@ export default {
 	},
 	mounted() {
 		this.startSolveSequenceStr = "R U U' R'";
-		this.scramble = new MoveSequence([], {mode: 'addition'});
+		this.scramble = new MoveSequence([], {mode: 'reduction'}); //!!addition
 		this.rawScramble = new MoveSequence([], {mode: 'raw'});
 		this.placeholderMoves = [];
 
@@ -417,7 +417,7 @@ export default {
 
 			if (this.phase === 'inspect') {
 				this.startTime = new Date();
-				this.analyzer = new SolveAnalyzer({scramble: this.rawScramble.moves});
+				this.analyzer = new SolveAnalyzer({scramble: this.scramble.moves});//raw
 				this.analyzerState = this.analyzer.state;
 				this.analyzer.on('statechange', (key, value) => {
 					this.$set(this.analyzerState, key, value);
@@ -443,9 +443,7 @@ export default {
 			}
 		},
 		checkStartSolveSequence() {
-			if (this.scramble.toString().endsWith(this.startSolveSequenceStr)) {
-				this.scramble.pop(4);//!!take length
-				this.rawScramble.pop(4); //!!
+			if (this.rawScramble.toString().endsWith(this.startSolveSequenceStr)) {
 				this.onClickStartSolve();
 			}
 			
@@ -488,7 +486,7 @@ export default {
 			this.phase = 'scramble';
 			this.isFirstSolve = false;
 
-			this.scramble = new MoveSequence([], {mode: 'addition'});
+			this.scramble = new MoveSequence([], {mode: 'reduction'}); //!!addition
 			this.rawScramble = new MoveSequence([], {mode: 'raw'});
 			this.placeholderMoves = [];
 			
